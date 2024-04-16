@@ -2,11 +2,80 @@
   <head>
     <meta charset="utf-8" />
     <script src="https://unpkg.com/pdf-lib"></script>
+    <script
+      src="https://mozilla.github.io/pdf.js/build/pdf.mjs"
+      type="module"
+    ></script>
+    <script type="module">
+      // Loaded via <script> tag, create shortcut to access PDF.js exports.
+      var { pdfjsLib } = globalThis;
+
+      // The workerSrc property shall be specified.
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://mozilla.github.io/pdf.js/build/pdf.worker.mjs";
+    </script>
+    <link href="/style.css" rel="stylesheet" />
   </head>
   <body>
-    <input id="pdfinput" type="file"></input>
-    <input id="pages"></input>
-    <button id="button">separate</button>
-    <script src="index.js"></script>
+    <div
+      class="container py-4 max-w-3xl grid grid-rows-10 grid-cols-2 gap-1 mx-auto"
+    >
+      <div class="flex items-center row-start-1 col-start-1">
+        <label class="inline-block">
+          <input
+            id="pdfinput"
+            class="peer block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100"
+            type="file"
+          />
+        </label>
+      </div>
+      <div class="flex gap-3 row-start-1 col-start-2">
+        <button
+          id="prev"
+          class="flex-initial w-24 rounded-full bg-violet-50 hover:bg-violet-100 text-violet-700 font-semibold"
+        >
+          &lt;</button
+        ><button
+          class="flex-1 rounded-full bg-violet-50 text-violet-700 font-semibold"
+        >
+          <span id="page_num">0</span>
+          <span>/</span>
+          <span id="page_count">0</span></button
+        ><button
+          id="next"
+          class="flex-initial w-24 rounded-full bg-violet-50 hover:bg-violet-100 text-violet-700 font-semibold"
+        >
+          &gt;
+        </button>
+      </div>
+      <label class="inline-block row-start-2 col-start-1">
+        <input
+          id="pages"
+          class="peer placeholder:italic placeholder:text-slate-400 block bg-white w-full border border-slate-300 rounded-md py-2 pl-9 pr-3 shadow-sm focus:outline-none focus:border-sky-500 focus:ring-sky-500 focus:ring-1 sm:text-sm"
+          placeholder="Pages range. Ex. 1,3,2,6-10"
+          type="text"
+        />
+      </label>
+      <label class="inline-block row-start-3 col-start-1">
+        <input
+          id="template text"
+          class="peer placeholder:italic placeholder:text-slate-400 block bg-white w-full border border-slate-300 rounded-md py-2 pl-9 pr-3 shadow-sm focus:outline-none focus:border-sky-500 focus:ring-sky-500 focus:ring-1 sm:text-sm"
+          placeholder="Template text. Can use %page_number%, %number_pages, %file_name%"
+          type="text"
+        />
+      </label>
+      <button
+        id="button"
+        class="row-start-4 col-start-1 rounded-full bg-violet-50 hover:bg-violet-100 text-violet-700 font-semibold"
+      >
+        Extract
+      </button>
+      <canvas
+        id="the-canvas"
+        class="row-start-2 col-start-2 row-span-8 border-2 border-violet-100 w-full h-full"
+      >
+      </canvas>
+    </div>
+    <script src="/index.js"></script>
   </body>
 </html>
