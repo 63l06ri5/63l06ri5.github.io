@@ -11,6 +11,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 var _a;
 function splitPdf() {
     return __awaiter(this, void 0, void 0, function* () {
+        var _a;
         if (!pdfFile) {
             return;
         }
@@ -45,9 +46,25 @@ function splitPdf() {
             return;
         }
         console.log(idxs);
+        let templateText = (_a = document.getElementById("template_text")) === null || _a === void 0 ? void 0 : _a.value;
+        if (templateText) {
+            templateText = templateText
+                .replace(/%file_name%/g, fileName)
+                .replace(/%number_pages%/g, pdfDoc.numPages);
+        }
         const copiedPages = yield subDocument.copyPages(pdfLibDoc, idxs);
+        let i = 0;
         for (const copiedPage of copiedPages) {
+            let insertedText = "";
+            if (templateText) {
+                insertedText = templateText.replace(/%page_number%/g, (idxs[i] + 1).toString());
+                console.log(insertedText);
+                copiedPage.drawText(insertedText, {
+                    y: copiedPage.getSize().height - 30,
+                });
+            }
             subDocument.addPage(copiedPage);
+            i++;
         }
         const pdfBytes = yield subDocument.save();
         yield downloadFileThroughATagWithBlob(pdfBytes, `file.pdf`);
@@ -68,7 +85,7 @@ function downloadFileThroughATagWithUrl(objectUrl, fileName) {
     document.body.removeChild(a);
 }
 document.querySelector("#button").addEventListener("click", splitPdf);
-var pdfDoc = null, pdfFile = undefined, pageNum = 1, pageRendering = false, pageNumPending = null, scale = 0.8, canvas = document.getElementById("the-canvas"), ctx = canvas.getContext("2d");
+var pdfDoc = null, pdfFile = undefined, fileName = "", pageNum = 1, pageRendering = false, pageNumPending = null, scale = 0.8, canvas = document.getElementById("the-canvas"), ctx = canvas.getContext("2d");
 /**
  * Get page info from document, resize canvas accordingly, and render page.
  * @param num Page number.
@@ -137,7 +154,13 @@ document.getElementById("next").addEventListener("click", onNextPage);
 (_a = document.getElementById("pdfinput")) === null || _a === void 0 ? void 0 : _a.addEventListener("change", loadFile);
 function loadFile() {
     return __awaiter(this, void 0, void 0, function* () {
-        pdfFile = yield document.querySelector("#pdfinput").files[0].arrayBuffer();
+        var _a;
+        const el = document.querySelector("#pdfinput");
+        if (!((_a = el.files) === null || _a === void 0 ? void 0 : _a.length)) {
+            return;
+        }
+        pdfFile = yield el.files[0].arrayBuffer();
+        fileName = el.files[0].name;
         /**
          * Asynchronously downloads PDF.
          */
