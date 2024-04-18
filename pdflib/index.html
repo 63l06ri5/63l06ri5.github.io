@@ -17,13 +17,15 @@
     <link href="./style.css" rel="stylesheet" />
   </head>
   <body>
-    <div class="container flex flex-col gap-2 py-4 lg:max-w-3xl mx-auto text-lg">
+    <div
+      class="container flex flex-col gap-2 py-4 lg:max-w-3xl mx-auto text-lg"
+    >
       <div class="flex-none grid grid-rows-7 grid-cols-1 gap-1 px-2">
         <div class="flex items-center row-start-1 col-start-1">
           <label class="inline-block">
             <input
               id="pdfinput"
-              class="peer block w-full text-xl text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xl  file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100"
+              class="peer block w-full text-xl text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xl file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100"
               type="file"
               accept="application/pdf"
             />
@@ -54,12 +56,20 @@
           >Template text. You can use %page_number%, %number_pages%,
           %file_name%</span
         >
-        <button
-          id="button"
-          class="row-start-6 col-start-1 rounded-full bg-violet-50 hover:bg-violet-100 text-violet-700 font-semibold"
-        >
-          Extract
-        </button>
+        <div class="row-start-6 col-start-1 flex gap-2">
+          <button
+            id="button"
+            class="flex-1 rounded-full bg-violet-50 hover:bg-violet-100 text-violet-700 font-semibold"
+          >
+            Extract
+          </button>
+          <button
+            id="saveButton"
+            class="flex-1 rounded-full bg-violet-50 hover:bg-violet-100 text-violet-700 font-semibold"
+          >
+            Save original
+          </button>
+        </div>
         <div class="flex gap-3 row-start-7 col-start-1">
           <button
             id="prev"
@@ -67,11 +77,21 @@
           >
             &lt;</button
           ><button
+            id="leftRotate"
+            class="flex-initial w-24 rounded-full bg-violet-50 hover:bg-violet-100 text-violet-700 font-semibold"
+          >
+            ↶</button
+          ><button
             class="flex-1 rounded-full bg-violet-50 text-violet-700 font-semibold"
           >
             <span id="page_num">0</span>
             <span>/</span>
             <span id="page_count">0</span></button
+          ><button
+            id="rightRotate"
+            class="flex-initial w-24 rounded-full bg-violet-50 hover:bg-violet-100 text-violet-700 font-semibold"
+          >
+            ↷</button
           ><button
             id="next"
             class="flex-initial w-24 rounded-full bg-violet-50 hover:bg-violet-100 text-violet-700 font-semibold"
@@ -80,7 +100,7 @@
           </button>
         </div>
       </div>
-      <div>
+      <div class="overflow-auto">
         <canvas id="the-canvas" class="border-2 border-violet-100 w-full">
         </canvas>
       </div>

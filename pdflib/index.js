@@ -9,9 +9,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 var _a;
+const textOffset = 30;
 function splitPdf() {
     return __awaiter(this, void 0, void 0, function* () {
-        var _a;
         if (!pdfFile) {
             return;
         }
@@ -46,29 +46,61 @@ function splitPdf() {
             return;
         }
         console.log(idxs);
-        let templateText = (_a = document.getElementById("template_text")) === null || _a === void 0 ? void 0 : _a.value;
-        if (templateText) {
-            templateText = templateText
-                .replace(/%file_name%/g, fileName)
-                .replace(/%number_pages%/g, pdfDoc.numPages);
-        }
+        let templateText = getTemplateText();
         const copiedPages = yield subDocument.copyPages(pdfLibDoc, idxs);
         let i = 0;
         for (const copiedPage of copiedPages) {
-            let insertedText = "";
-            if (templateText) {
-                insertedText = templateText.replace(/%page_number%/g, (idxs[i] + 1).toString());
-                console.log(insertedText);
-                copiedPage.drawText(insertedText, {
-                    y: copiedPage.getSize().height - 30,
-                });
-            }
+            handleTextDrawingAndRotation(templateText, i, idxs[i] + 1, copiedPage);
             subDocument.addPage(copiedPage);
             i++;
         }
         const pdfBytes = yield subDocument.save();
         yield downloadFileThroughATagWithBlob(pdfBytes, `file.pdf`);
     });
+}
+function getTemplateText() {
+    var _a;
+    let templateText = (_a = document.getElementById("template_text")) === null || _a === void 0 ? void 0 : _a.value;
+    if (templateText) {
+        templateText = templateText
+            .replace(/%file_name%/g, fileName)
+            .replace(/%number_pages%/g, pdfDoc.numPages);
+    }
+    return templateText;
+}
+function handleTextDrawingAndRotation(templateText, index, pageNumber, page) {
+    const { width, height } = page.getSize();
+    let x = 0, y = height - textOffset;
+    if (rotation[index + 1]) {
+        page.setRotation(window.PDFLib.degrees(rotation[index + 1]));
+        switch (rotation[index + 1]) {
+            case 90:
+            case -270:
+                x = textOffset;
+                y = 0;
+                break;
+            case 180:
+            case -180:
+                x = width;
+                y = textOffset;
+                break;
+            case 270:
+            case -90:
+                x = width - textOffset;
+                y = height;
+                break;
+        }
+    }
+    let insertedText = "";
+    if (templateText) {
+        insertedText = templateText.replace(/%page_number%/g, pageNumber.toString());
+        console.log(insertedText);
+        page.drawText(encodeText2(insertedText), {
+            x,
+            y,
+            rotate: window.PDFLib.degrees(rotation[index + 1] || 0),
+        });
+    }
 }
 function downloadFileThroughATagWithBlob(blob, fileName) {
     const url = window.URL.createObjectURL(new Blob([blob]));
@@ -84,8 +116,24 @@ function downloadFileThroughATagWithUrl(objectUrl, fileName) {
     a.click();
     document.body.removeChild(a);
 }
-document.querySelector("#button").addEventListener("click", splitPdf);
-var pdfDoc = null, pdfFile = undefined, fileName = "", pageNum = 1, pageRendering = false, pageNumPending = null, scale = 0.8, canvas = document.getElementById("the-canvas"), ctx = canvas.getContext("2d");
+document.getElementById("button").addEventListener("click", splitPdf);
+function saveOriginal() {
+    return __awaiter(this, void 0, void 0, function* () {
+        if (!pdfFile) {
+            return;
+        }
+        const pdfLibDoc = yield window.PDFLib.PDFDocument.load(pdfFile);
+        const pages = pdfLibDoc.getPages();
+        const templateText = getTemplateText();
+        for (let i = 0; i < pages.length; i++) {
+            handleTextDrawingAndRotation(templateText, i, i + 1, pages[i]);
+        }
+        const pdfBytes = yield pdfLibDoc.save();
+        yield downloadFileThroughATagWithBlob(pdfBytes, `file.pdf`);
+    });
+}
+document.getElementById("saveButton").addEventListener("click", saveOriginal);
+var pdfDoc = null, pdfFile = undefined, fileName = "", pageNum = 1, pageRendering = false, pageNumPending = null, scale = 0.8, canvas = document.getElementById("the-canvas"), ctx = canvas.getContext("2d"), rotation;
 /**
  * Get page info from document, resize canvas accordingly, and render page.
  * @param num Page number.
@@ -97,6 +145,7 @@ function renderPage(num) {
         var viewport = page.getViewport({ scale: scale });
         canvas.height = viewport.height;
         canvas.width = viewport.width;
+        canvas.style.transform = `rotate(${rotation[num] || 0}deg)`;
         // Render PDF page into canvas context
         var renderContext = {
             canvasContext: ctx,
@@ -151,6 +200,22 @@ function onNextPage() {
     queueRenderPage(pageNum);
 }
 document.getElementById("next").addEventListener("click", onNextPage);
+function rotateLeft() {
+    if (!pdfFile) {
+        return;
+    }
+    rotation[pageNum] = ((rotation[pageNum] || 0) - 90) % 360;
+    canvas.style.transform = `rotate(${rotation[pageNum] || 0}deg)`;
+}
+document.getElementById("leftRotate").addEventListener("click", rotateLeft);
+function rotateRight() {
+    if (!pdfFile) {
+        return;
+    }
+    rotation[pageNum] = ((rotation[pageNum] || 0) + 90) % 360;
+    canvas.style.transform = `rotate(${rotation[pageNum] || 0}deg)`;
+}
+document.getElementById("rightRotate").addEventListener("click", rotateRight);
 (_a = document.getElementById("pdfinput")) === null || _a === void 0 ? void 0 : _a.addEventListener("change", loadFile);
 function loadFile() {
     return __awaiter(this, void 0, void 0, function* () {
@@ -161,6 +226,7 @@ function loadFile() {
         }
         pdfFile = yield el.files[0].arrayBuffer();
         fileName = el.files[0].name;
+        rotation = {};
         /**
          * Asynchronously downloads PDF.
          */
@@ -173,3 +239,8 @@ function loadFile() {
     });
 }
 const arrayRange = (start, stop, step) => Array.from({ length: (stop - start) / step + 1 }, (value, index) => start + index * step);
+const encodeText2 = (text) => {
+    return Array.from(text)
+        .map((x) => (x.charCodeAt(0) > 255 ? "_" : x))
+        .join("");
+};
