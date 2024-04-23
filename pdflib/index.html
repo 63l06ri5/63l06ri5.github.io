@@ -28,6 +28,7 @@
               class="peer block w-full text-xl text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xl file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100"
               type="file"
               accept="application/pdf"
+              multiple
             />
           </label>
         </div>
@@ -67,7 +68,7 @@
             id="saveButton"
             class="flex-1 rounded-full bg-violet-50 hover:bg-violet-100 text-violet-700 font-semibold"
           >
-            Save original
+            Save
           </button>
         </div>
         <div class="flex gap-3 row-start-7 col-start-1">
@@ -84,9 +85,9 @@
           ><button
             class="flex-1 rounded-full bg-violet-50 text-violet-700 font-semibold"
           >
-            <span id="page_num">0</span>
+            <input id="page_num" class="w-10 text-right bg-violet-50 text-violet-700 font-semibold" value="0"></input>
             <span>/</span>
-            <span id="page_count">0</span></button
+            <span id="page_count" class="inline-block w-10 text-left">0</span></button
           ><button
             id="rightRotate"
             class="flex-initial w-24 rounded-full bg-violet-50 hover:bg-violet-100 text-violet-700 font-semibold"

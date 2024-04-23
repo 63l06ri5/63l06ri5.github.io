@@ -8,16 +8,14 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var _a;
+var _a, _b, _c;
 const textOffset = 30;
+// type PDFPage = typeof window.PDFLib.PDFPage;
 function splitPdf() {
     return __awaiter(this, void 0, void 0, function* () {
-        if (!pdfFile) {
+        if (!(pdfFiles === null || pdfFiles === void 0 ? void 0 : pdfFiles.length)) {
             return;
         }
-        // Load your PDFDocument
-        const pdfLibDoc = yield window.PDFLib.PDFDocument.load(pdfFile);
-        const subDocument = yield window.PDFLib.PDFDocument.create();
         const idxsRaw = document.querySelector("#pages").value.split(/[\s,]/);
         const idxs = [];
         idxsRaw.forEach((x) => {
@@ -26,14 +24,12 @@ function splitPdf() {
                 return;
             }
             const leftMatch = parseInt(matches[1]) - 1;
-            if (leftMatch < 0 || leftMatch >= pdfDoc.numPages) {
+            if (leftMatch < 0 || leftMatch >= numPages) {
                 return;
             }
             if (matches[3]) {
                 const rightMatch = parseInt(matches[3]) - 1;
-                if (rightMatch < 0 ||
-                    rightMatch <= leftMatch ||
-                    rightMatch >= pdfDoc.numPages) {
+                if (rightMatch < 0 || rightMatch <= leftMatch || rightMatch >= numPages) {
                     return;
                 }
                 idxs.push(...arrayRange(leftMatch, rightMatch, 1));
@@ -46,25 +42,42 @@ function splitPdf() {
             return;
         }
         console.log(idxs);
-        let templateText = getTemplateText();
-        const copiedPages = yield subDocument.copyPages(pdfLibDoc, idxs);
-        let i = 0;
-        for (const copiedPage of copiedPages) {
-            handleTextDrawingAndRotation(templateText, i, idxs[i] + 1, copiedPage);
+        const subDocument = yield window.PDFLib.PDFDocument.create();
+        const indexes = Array.from(Array(pdfFiles === null || pdfFiles === void 0 ? void 0 : pdfFiles.length)).map((_) => []);
+        const indexesWithoutOffset = Array.from(Array(pdfFiles === null || pdfFiles === void 0 ? void 0 : pdfFiles.length)).map((_) => []);
+        idxs.forEach((idx) => indexes[pageFileMapping[idx]].push(idx));
+        indexesWithoutOffset[0] = indexes[0];
+        for (let i = 1; i < indexes.length; i++) {
+            const offest = pagesNumbers.slice(0, i).reduce((s, v) => s + v, 0);
+            indexesWithoutOffset[i] = indexes[i].map((x) => x - offest);
+        }
+        const templateTexts = idxs.map((idx) => getTemplateText(fileNames[pageFileMapping[idx]]));
+        let copiedPages = [];
+        for (let j = 0; j < (pdfFiles === null || pdfFiles === void 0 ? void 0 : pdfFiles.length); j++) {
+            const pdfLibDoc = yield window.PDFLib.PDFDocument.load(pdfFiles[j]);
+            copiedPages = [
+                ...copiedPages,
+                ...(yield subDocument.copyPages(pdfLibDoc, indexesWithoutOffset[j])),
+            ];
+        }
+        const idxsToCopiedPages = indexes.flat();
+        for (let i = 0; i < idxs.length; i++) {
+            const ind = idxsToCopiedPages.indexOf(idxs[i]);
+            const copiedPage = copiedPages[ind];
+            handleTextDrawingAndRotation(templateTexts[i], idxs[i], idxs[i] + 1, copiedPage);
             subDocument.addPage(copiedPage);
-            i++;
         }
         const pdfBytes = yield subDocument.save();
         yield downloadFileThroughATagWithBlob(pdfBytes, `file.pdf`);
     });
 }
-function getTemplateText() {
+function getTemplateText(fileName) {
     var _a;
     let templateText = (_a = document.getElementById("template_text")) === null || _a === void 0 ? void 0 : _a.value;
     if (templateText) {
         templateText = templateText
             .replace(/%file_name%/g, fileName)
-            .replace(/%number_pages%/g, pdfDoc.numPages);
+            .replace(/%number_pages%/g, numPages.toString());
     }
     return templateText;
 }
@@ -119,13 +132,27 @@ function downloadFileThroughATagWithUrl(objectUrl, fileName) {
 document.getElementById("button").addEventListener("click", splitPdf);
 function saveOriginal() {
     return __awaiter(this, void 0, void 0, function* () {
-        if (!pdfFile) {
+        if (!(pdfFiles === null || pdfFiles === void 0 ? void 0 : pdfFiles.length)) {
             return;
         }
-        const pdfLibDoc = yield window.PDFLib.PDFDocument.load(pdfFile);
+        let pdfLibDoc;
+        let pdfLibDocs = [];
+        for (let i = 0; i < (pdfFiles === null || pdfFiles === void 0 ? void 0 : pdfFiles.length); i++) {
+            pdfLibDocs.push(yield window.PDFLib.PDFDocument.load(pdfFiles[i]));
+        }
+        if (pdfFiles.length == 1) {
+            pdfLibDoc = pdfLibDocs[0];
+        }
+        else {
+            pdfLibDoc = yield window.PDFLib.PDFDocument.create();
+            for (let i = 0; i < pdfLibDocs.length; i++) {
+                const copiedPagesA = yield pdfLibDoc.copyPages(pdfLibDocs[i], pdfLibDocs[i].getPageIndices());
+                copiedPagesA.forEach((page) => pdfLibDoc.addPage(page));
+            }
+        }
         const pages = pdfLibDoc.getPages();
-        const templateText = getTemplateText();
         for (let i = 0; i < pages.length; i++) {
+            const templateText = getTemplateText(fileNames[pageFileMapping[i]]);
             handleTextDrawingAndRotation(templateText, i, i + 1, pages[i]);
         }
         const pdfBytes = yield pdfLibDoc.save();
@@ -133,7 +160,7 @@ function saveOriginal() {
     });
 }
 document.getElementById("saveButton").addEventListener("click", saveOriginal);
-var pdfDoc = null, pdfFile = undefined, fileName = "", pageNum = 1, pageRendering = false, pageNumPending = null, scale = 0.8, canvas = document.getElementById("the-canvas"), ctx = canvas.getContext("2d"), rotation;
+var pdfDocs = [], pdfFiles = undefined, fileNames = [], pageNum = 1, numPages = 0, pagesNumbers = [], pageFileMapping = [], pageRendering = false, pageNumPending = null, scale = 0.8, canvas = document.getElementById("the-canvas"), ctx = canvas.getContext("2d"), rotation;
 /**
  * Get page info from document, resize canvas accordingly, and render page.
  * @param num Page number.
@@ -141,7 +168,11 @@ var pdfDoc = null, pdfFile = undefined, fileName = "", pageNum = 1, pageRenderin
 function renderPage(num) {
     pageRendering = true;
     // Using promise to fetch the page
-    pdfDoc.getPage(num).then(function (page) {
+    let pdfNum = num;
+    for (let i = 0; i < pageFileMapping[num - 1]; i++) {
+        pdfNum -= pagesNumbers[i];
+    }
+    pdfDocs[pageFileMapping[num - 1]].getPage(pdfNum).then(function (page) {
         var viewport = page.getViewport({ scale: scale });
         canvas.height = viewport.height;
         canvas.width = viewport.width;
@@ -163,7 +194,7 @@ function renderPage(num) {
         });
     });
     // Update page counters
-    document.getElementById("page_num").textContent =
+    document.getElementById("page_num").value =
         num.toString();
 }
 /**
@@ -193,7 +224,7 @@ document.getElementById("prev").addEventListener("click", onPrevPage);
  * Displays next page.
  */
 function onNextPage() {
-    if (pageNum >= pdfDoc.numPages) {
+    if (pageNum >= numPages) {
         return;
     }
     pageNum++;
@@ -201,7 +232,7 @@ function onNextPage() {
 }
 document.getElementById("next").addEventListener("click", onNextPage);
 function rotateLeft() {
-    if (!pdfFile) {
+    if (!(pdfFiles === null || pdfFiles === void 0 ? void 0 : pdfFiles.length)) {
         return;
     }
     rotation[pageNum] = ((rotation[pageNum] || 0) - 90) % 360;
@@ -209,7 +240,7 @@ function rotateLeft() {
 }
 document.getElementById("leftRotate").addEventListener("click", rotateLeft);
 function rotateRight() {
-    if (!pdfFile) {
+    if (!(pdfFiles === null || pdfFiles === void 0 ? void 0 : pdfFiles.length)) {
         return;
     }
     rotation[pageNum] = ((rotation[pageNum] || 0) + 90) % 360;
@@ -224,18 +255,30 @@ function loadFile() {
         if (!((_a = el.files) === null || _a === void 0 ? void 0 : _a.length)) {
             return;
         }
-        pdfFile = yield el.files[0].arrayBuffer();
-        fileName = el.files[0].name;
+        pdfFiles = [];
+        fileNames = [];
+        for (let i = 0; i < el.files.length; i++) {
+            pdfFiles.push(yield el.files[i].arrayBuffer());
+            fileNames.push(el.files[i].name);
+        }
         rotation = {};
         /**
          * Asynchronously downloads PDF.
          */
-        pdfjsLib.getDocument(pdfFile.slice()).promise.then(function (pdfDoc_) {
-            pdfDoc = pdfDoc_;
-            document.getElementById("page_count").textContent = pdfDoc.numPages;
-            // Initial/first page rendering
-            renderPage((pageNum = 1));
-        });
+        pdfDocs = yield Promise.all(pdfFiles.map((pdfFile) => pdfjsLib.getDocument(pdfFile.slice(0)).promise));
+        pageFileMapping = pdfDocs
+            .map((pdfDoc, i) => Array.from(Array(pdfDoc.numPages)).map((_) => i))
+            .flat();
+        pagesNumbers = pdfDocs.map((pdfDoc) => pdfDoc.numPages);
+        document.getElementById("page_count").textContent = numPages =
+            pagesNumbers.reduce((sum, v) => sum + v, 0);
+        // pdfjsLib.getDocument(pdfFile.slice()).promise.then(function (pdfDoc_) {
+        //   pdfDoc = pdfDoc_;
+        //   document.getElementById("page_count")!.textContent = pdfDoc.numPages;
+        //   // Initial/first page rendering
+        //   renderPage((pageNum = 1));
+        // });
+        renderPage((pageNum = 1));
     });
 }
 const arrayRange = (start, stop, step) => Array.from({ length: (stop - start) / step + 1 }, (value, index) => start + index * step);
@@ -244,3 +287,23 @@ const encodeText2 = (text) => {
         .map((x) => (x.charCodeAt(0) > 255 ? "_" : x))
         .join("");
 };
+(_b = document.getElementById("page_num")) === null || _b === void 0 ? void 0 : _b.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+        const match = e.target.value.match(/^\d*$/);
+        if (match) {
+            const num = parseInt(match[0]);
+            if (num > 0 && num <= numPages) {
+                renderPage((pageNum = num));
+            }
+        }
+    }
+});
+(_c = document.getElementById("page_num")) === null || _c === void 0 ? void 0 : _c.addEventListener("blur", (e) => {
+    const match = e.target.value.match(/^\d*$/);
+    if (match) {
+        const num = parseInt(match[0]);
+        if (num > 0 && num <= numPages) {
+            renderPage((pageNum = num));
+        }
+    }
+});
